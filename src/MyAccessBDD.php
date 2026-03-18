@@ -25,6 +25,8 @@ class MyAccessBDD extends AccessBDD {
                 return $this->selectCommandesLivreDvd($champs);
             case "commandesdvd" :
                 return $this->selectCommandesLivreDvd($champs);
+            case "commandesrevue" :
+                return $this->selectCommandesRevue($champs);
             case "suivi" :
                 return $this->selectTableSimple($table);
             case "genre" :
@@ -32,6 +34,8 @@ class MyAccessBDD extends AccessBDD {
             case "rayon" :
             case "etat" :
                 return $this->selectTableSimple($table);
+            case "utilisateur":
+                return $this->getUtilisateur($id);
             case "" :
             default:
                 return $this->selectTuplesOneTable($table, $champs);
@@ -197,5 +201,64 @@ class MyAccessBDD extends AccessBDD {
         $requete .= "ORDER BY c.dateCommande DESC";
         return $this->conn->queryBDD($requete, $champNecessaire);
     }
+    /**
+ * récupère toutes les commandes d'une revue
+ * @param array|null $champs (doit contenir 'idRevue')
+ * @return array|null
+ */
+private function selectCommandesRevue(?array $champs) : ?array{
+    if(empty($champs)){
+        return null;
+    }
+    if(!array_key_exists('idRevue', $champs)){
+        return null;
+    }
+    $champNecessaire['idRevue'] = $champs['idRevue'];
+    $requete = "SELECT c.id, c.dateCommande, c.montant, a.dateFinAbonnement, a.idRevue ";
+    $requete .= "FROM commande c ";
+    $requete .= "JOIN abonnement a ON c.id = a.id ";
+    $requete .= "WHERE a.idRevue = :idRevue ";
+    $requete .= "ORDER BY c.dateCommande DESC";
+    return $this->conn->queryBDD($requete, $champNecessaire);
+}
 
+private function updateExemplaire(?string $id, ?array $champs) : ?int{
+    if(empty($champs) || is_null($id)){
+        return null;
+    }
+    // $id est au format "idDoc_numero"
+    $parties = explode("_", $id);
+    if(count($parties) != 2) return null;
+    $idDoc = $parties[0];
+    $numero = $parties[1];
+    $requete = "update exemplaire set ";
+    foreach ($champs as $key => $value){
+        $requete .= "$key=:$key,";
+    }
+    $requete = substr($requete, 0, strlen($requete)-1);
+    $champs["idDoc"] = $idDoc;
+    $champs["numero"] = $numero;
+    $requete .= " where id=:idDoc and numero=:numero;";
+    return $this->conn->updateBDD($requete, $champs);
+}
+
+private function deleteExemplaire(?array $champs) : ?int{
+    if(empty($champs)) return null;
+    if(!array_key_exists('id', $champs) || !array_key_exists('numero', $champs)) return null;
+    $requete = "delete from exemplaire where id=:id and numero=:numero;";
+    return $this->conn->updateBDD($requete, $champs);
+}
+
+private function getUtilisateur(?string $id) : ?array {
+    if(is_null($id)) return null;
+    $champs = json_decode($id, true);
+    if(is_null($champs)) return null;
+    $login = $champs['login'] ?? '';
+    $pwd = $champs['pwd'] ?? '';
+    $requete = "SELECT u.id, u.nom, u.prenom, u.login, u.pwd, u.idService, s.libelle as service
+                FROM utilisateur u
+                JOIN service s ON u.idService = s.id
+                WHERE u.login = :login AND u.pwd = :pwd;";
+    return $this->conn->selectBDD($requete, ['login' => $login, 'pwd' => $pwd]);
+}
 }
