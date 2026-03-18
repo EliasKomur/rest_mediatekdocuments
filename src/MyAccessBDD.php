@@ -35,7 +35,7 @@ class MyAccessBDD extends AccessBDD {
             case "etat" :
                 return $this->selectTableSimple($table);
             case "utilisateur":
-                return $this->getUtilisateur($id);
+                return $this->getUtilisateur($champs);
             case "" :
             default:
                 return $this->selectTuplesOneTable($table, $champs);
@@ -249,9 +249,7 @@ private function deleteExemplaire(?array $champs) : ?int{
     return $this->conn->updateBDD($requete, $champs);
 }
 
-private function getUtilisateur(?string $id) : ?array {
-    if(is_null($id)) return null;
-    $champs = json_decode($id, true);
+private function getUtilisateur(?array $champs) : ?array {
     if(is_null($champs)) return null;
     $login = $champs['login'] ?? '';
     $pwd = $champs['pwd'] ?? '';
@@ -259,6 +257,6 @@ private function getUtilisateur(?string $id) : ?array {
                 FROM utilisateur u
                 JOIN service s ON u.idService = s.id
                 WHERE u.login = :login AND u.pwd = :pwd;";
-    return $this->conn->selectBDD($requete, ['login' => $login, 'pwd' => $pwd]);
+    return $this->conn->queryBDD($requete, ['login' => $login, 'pwd' => $pwd]);
 }
 }
